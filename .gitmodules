@@ -1,0 +1,3 @@
+[submodule "local_model"]
+	path = local_model
+	url = git@hf.co:bigcode/starcoder
