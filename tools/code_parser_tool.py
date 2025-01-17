@@ -4,8 +4,8 @@ import ast
 from langchain.tools import BaseTool
 
 class CodeParserTool(BaseTool):
-    name = "code_parser_tool"
-    description = "Tool for parsing Python code files and extracting classes/methods/docstrings."
+    name: str = "code_parser_tool"
+    description: str = "Tool for parsing Python code files and extracting classes/methods/docstrings."
 
     def _run(self, repo_path: str) -> list:
         """

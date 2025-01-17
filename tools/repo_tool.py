@@ -4,8 +4,8 @@ import subprocess
 from langchain.tools import BaseTool
 
 class RepoTool(BaseTool):
-    name = "repo_tool"
-    description = "Tool for cloning or updating a Git repository."
+    name: str = "repo_tool"
+    description: str = "Tool for cloning or updating a Git repository."
 
     def _run(self, repo_url: str, local_path: str = "local_repo") -> str:
         """

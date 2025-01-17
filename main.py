@@ -1,7 +1,7 @@
 # main.py
 import os
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
-from langchain.llms import HuggingFacePipeline
+from langchain_community.llms import HuggingFacePipeline
 from langchain.agents import Tool, AgentExecutor, ZeroShotAgent
 from langchain.prompts import PromptTemplate
 

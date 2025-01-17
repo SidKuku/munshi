@@ -3,8 +3,8 @@ from langchain.tools import BaseTool
 from langchain.llms.base import LLM
 
 class SummarizerTool(BaseTool):
-    name = "summarizer_tool"
-    description = "Tool for summarizing code snippets using an LLM."
+    name: str = "summarizer_tool"
+    description: str = "Tool for summarizing code snippets using an LLM."
 
     def __init__(self, llm: LLM, **kwargs):
         super().__init__(**kwargs)

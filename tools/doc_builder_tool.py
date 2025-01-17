@@ -3,8 +3,8 @@ import os
 from langchain.tools import BaseTool
 
 class DocBuilderTool(BaseTool):
-    name = "doc_builder_tool"
-    description = "Tool for building a Markdown documentation file from summarized entities."
+    name: str = "doc_builder_tool"
+    description: str = "Tool for building a Markdown documentation file from summarized entities."
 
     def _run(self, entities: list, output_path: str = "docs/Documentation.md") -> str:
         """
