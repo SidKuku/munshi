@@ -5,7 +5,7 @@ import json
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
-from langchain.llms import HuggingFacePipeline
+from langchain_huggingface import HuggingFacePipeline
 from langchain.chains import LLMChain
 from langchain.agents import Tool, AgentExecutor, ZeroShotAgent
 
@@ -29,6 +29,7 @@ def load_local_llm(model_path: str):
         "text-generation", 
         model=model, 
         tokenizer=tokenizer,
+#        device=0,
         max_new_tokens=512,  # adjust as needed
         temperature=0.1
     )
