@@ -1,34 +1,60 @@
 # tools/doc_builder_tool.py
+
 import os
+import json
+from typing import List, Dict, Any
+from pydantic import BaseModel, Field
 from langchain.tools import BaseTool
+
+class DocBuilderToolInput(BaseModel):
+    entities: List[Dict[str, Any]] = Field(..., description="List of summarized entities")
+    output_path: str = Field("docs/Documentation.md", description="Where to write the Markdown doc")
+
+class DocBuilderToolOutput(BaseModel):
+    doc_path: str
 
 class DocBuilderTool(BaseTool):
     name: str = "doc_builder_tool"
-    description: str = "Tool for building a Markdown documentation file from summarized entities."
+    description: str = (
+        "Creates a Markdown documentation file from summarized entities. "
+        "Input must be JSON with 'entities' and 'output_path'. "
+        "Output is JSON with 'doc_path'."
+    )
 
-    def _run(self, entities: list, output_path: str = "docs/Documentation.md") -> str:
+    def _run(self, tool_input: str) -> str:
         """
-        Builds a Markdown file from the entities, writes it to 'output_path',
-        and returns the path to the generated documentation.
+        Expects JSON: {"entities": [...], "output_path": "..."}
+        Returns JSON: {"doc_path": "..."}
         """
-        # Ensure docs folder exists
-        out_dir = os.path.dirname(output_path)
-        if out_dir and not os.path.exists(out_dir):
-            os.makedirs(out_dir, exist_ok=True)
+        try:
+            data = json.loads(tool_input)
+            parsed_input = DocBuilderToolInput(**data)
+        except Exception as e:
+            return json.dumps({"error": f"Invalid input: {str(e)}"})
 
-        md = "# Project Documentation\n\n"
-        for e in entities:
-            md += f"## {e['type'].title()}: {e['name']}\n\n"
-            md += f"**Location**: `{e.get('file_path', '')}`\n\n"
-            md += f"**Summary**:\n\n{e.get('summary', 'No summary available')}\n\n"
-            md += "---\n\n"
+        output_dir = os.path.dirname(parsed_input.output_path)
+        if output_dir and not os.path.exists(output_dir):
+            os.makedirs(output_dir, exist_ok=True)
 
-        with open(output_path, "w", encoding="utf-8") as f:
-            f.write(md)
+        md_content = "# Project Documentation\n\n"
 
-        return os.path.abspath(output_path)
+        for e in parsed_input.entities:
+            e_type = e.get("type", "").title()
+            e_name = e.get("name", "")
+            e_file = e.get("file_path", "")
+            summary = e.get("summary", "No summary available")
 
-    async def _arun(self, entities: list, output_path: str = "docs/Documentation.md") -> str:
-        """Async version not implemented."""
-        raise NotImplementedError("Async run not implemented.")
+            md_content += f"## {e_type}: {e_name}\n\n"
+            md_content += f"**Location**: `{e_file}`\n\n"
+            md_content += f"**Summary**:\n\n{summary}\n\n"
+            md_content += "---\n\n"
+
+        with open(parsed_input.output_path, "w", encoding="utf-8") as f:
+            f.write(md_content)
+
+        output = DocBuilderToolOutput(doc_path=os.path.abspath(parsed_input.output_path))
+        return output.json()
+
+    async def _arun(self, tool_input: str) -> str:
+        raise NotImplementedError("Async not implemented.")
 

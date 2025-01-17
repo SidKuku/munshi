@@ -1,18 +1,46 @@
 # tools/code_parser_tool.py
+
 import os
+import json
 import ast
+from typing import List, Dict, Any
 from langchain.tools import BaseTool
+from pydantic import BaseModel, Field
+
+class ParserToolInput(BaseModel):
+    repo_path: str = Field(..., description="Path to the local repository to parse")
+
+class Entity(BaseModel):
+    type: str
+    name: str
+    docstring: str = ""
+    code: str
+    file_path: str
+
+class ParserToolOutput(BaseModel):
+    entities: List[Entity]
 
 class CodeParserTool(BaseTool):
     name: str = "code_parser_tool"
-    description: str = "Tool for parsing Python code files and extracting classes/methods/docstrings."
+    description: str = (
+        "Parses Python files in a repo and extracts classes/functions. "
+        "Input must be JSON: {'repo_path': '...'}, output is JSON with 'entities'."
+    )
 
-    def _run(self, repo_path: str) -> list:
+    def _run(self, tool_input: str) -> str:
         """
-        Walks the given repo_path, parses .py files, 
-        returns a list of extracted entities with code snippets.
+        Expects JSON input: {"repo_path": "..."}
+        Returns JSON: {"entities": [ ... ]}
         """
-        entities = []
+        try:
+            data = json.loads(tool_input)
+            parsed = ParserToolInput(**data)
+        except Exception as e:
+            return json.dumps({"error": f"Invalid input: {str(e)}"})
+
+        repo_path = parsed.repo_path
+        entities: List[Dict[str, Any]] = []
+
         for root, dirs, files in os.walk(repo_path):
             for file in files:
                 if file.endswith(".py"):
@@ -24,8 +52,8 @@ class CodeParserTool(BaseTool):
                         for node in ast.walk(tree):
                             if isinstance(node, ast.ClassDef):
                                 name = node.name
-                                doc = ast.get_docstring(node)
-                                code_snippet = self._extract_source_segment(code, node)
+                                doc = ast.get_docstring(node) or ""
+                                code_snippet = self._extract_code_segment(code, node)
                                 entities.append({
                                     "type": "class",
                                     "name": name,
@@ -35,8 +63,8 @@ class CodeParserTool(BaseTool):
                                 })
                             elif isinstance(node, ast.FunctionDef):
                                 name = node.name
-                                doc = ast.get_docstring(node)
-                                code_snippet = self._extract_source_segment(code, node)
+                                doc = ast.get_docstring(node) or ""
+                                code_snippet = self._extract_code_segment(code, node)
                                 entities.append({
                                     "type": "function",
                                     "name": name,
@@ -44,24 +72,21 @@ class CodeParserTool(BaseTool):
                                     "code": code_snippet,
                                     "file_path": file_path
                                 })
-                    except Exception:
-                        # Ignore parse errors
+                    except:
                         pass
-        return entities
+        
+        # Wrap in pydantic model
+        output = ParserToolOutput(entities=[Entity(**e) for e in entities])
+        return output.json()
 
-    async def _arun(self, repo_path: str) -> list:
-        """Async version (not implemented)."""
-        raise NotImplementedError("Async run not implemented.")
-
-    def _extract_source_segment(self, full_code: str, node) -> str:
-        """
-        Extract the exact source code for the given AST node (Python 3.8+).
-        Fallback if ast.get_source_segment is unavailable or fails.
-        """
+    def _extract_code_segment(self, full_code: str, node) -> str:
+        # For Python 3.8+: ast.get_source_segment
         try:
             return ast.get_source_segment(full_code, node)
         except:
-            # Fallback approach:
             lines = full_code.splitlines()
-            return "\n".join(lines[node.lineno - 1 : node.end_lineno])
+            return "\n".join(lines[node.lineno - 1: node.end_lineno])
+
+    async def _arun(self, tool_input: str) -> str:
+        raise NotImplementedError("Async not implemented.")
 
